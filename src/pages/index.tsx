@@ -1,74 +1,97 @@
-import * as React from 'react';
+import { useState } from "react";
 
-import Layout from '@/components/layout/Layout';
-import ArrowLink from '@/components/links/ArrowLink';
-import ButtonLink from '@/components/links/ButtonLink';
-import UnderlineLink from '@/components/links/UnderlineLink';
-import UnstyledLink from '@/components/links/UnstyledLink';
-import Seo from '@/components/Seo';
+import { NFTCard } from "@/components/NftCard";
+const api_key = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
 
-/**
- * SVGR Support
- * Caveat: No React Props Type.
- *
- * You can override the next-env if the type is important to you
- * @see https://stackoverflow.com/questions/68103844/how-to-override-next-js-svg-module-declaration
- */
-import Vercel from '~/svg/Vercel.svg';
+const Home = () => {
+  const [wallet, setWalletAddress] = useState("");
+  const [collection, setCollectionAddress] = useState("");
+  const [NFTs, setNFTs] = useState([]);
+  const [fetchForCollection, setFetchForCollection] = useState(false);
 
-// !STARTERCONF -> Select !STARTERCONF and CMD + SHIFT + F
-// Before you begin editing, follow all comments with `STARTERCONF`,
-// to customize the default configuration.
+  const fetchNFTs = async () => {
+    let nfts;
+    console.log("fetching nfts");
+    const baseURL = `https://eth-mainnet.g.alchemy.com/v2/${api_key}/getNFTs/`;
+    const requestOptions = { method: "GET" };
 
-export default function HomePage() {
+    if (!collection.length) {
+      const fetchURL = `${baseURL}?owner=${wallet}`;
+
+      nfts = await fetch(fetchURL, requestOptions).then((data) => data.json());
+    } else {
+      console.log("fetching nfts for collection owned by address");
+      const fetchURL = `${baseURL}?owner=${wallet}&contractAddresses%5B%5D=${collection}`;
+      nfts = await fetch(fetchURL, requestOptions).then((data) => data.json());
+    }
+
+    if (nfts) {
+      console.log("nfts:", nfts);
+      setNFTs(nfts.ownedNfts.slice(0, 10));
+    }
+  };
+
+  const fetchNFTsForCollection = async () => {
+    if (collection.length) {
+      const requestOptions = {
+        method: "GET",
+      };
+      const baseURL = `https://eth-mainnet.g.alchemy.com/v2/${api_key}/getNFTsForCollection/`;
+      const fetchURL = `${baseURL}?contractAddress=${collection}&withMetadata=${"true"}`;
+      const nfts = await fetch(fetchURL, requestOptions).then((data) =>
+        data.json()
+      );
+      if (nfts) {
+        console.log("NFTs in collection:", nfts);
+        setNFTs(nfts.nfts.slice(0, 10));
+      }
+    }
+  };
+
   return (
-    <Layout>
-      {/* <Seo templateTitle='Home' /> */}
-      <Seo />
-
-      <main>
-        <section className='bg-white'>
-          <div className='layout relative flex min-h-screen flex-col items-center justify-center py-12 text-center'>
-            <Vercel className='text-5xl' />
-            <h1 className='mt-4'>
-              Next.js + Tailwind CSS + TypeScript Starter
-            </h1>
-            <p className='mt-2 text-sm text-gray-800'>
-              A starter for Next.js, Tailwind CSS, and TypeScript with Absolute
-              Import, Seo, Link component, pre-configured with Husky{' '}
-            </p>
-            <p className='mt-2 text-sm text-gray-700'>
-              <ArrowLink href='https://github.com/theodorusclarence/ts-nextjs-tailwind-starter'>
-                See the repository
-              </ArrowLink>
-            </p>
-
-            <ButtonLink className='mt-6' href='/components' variant='light'>
-              See all components
-            </ButtonLink>
-
-            <UnstyledLink
-              href='https://vercel.com/new/git/external?repository-url=https%3A%2F%2Fgithub.com%2Ftheodorusclarence%2Fts-nextjs-tailwind-starter'
-              className='mt-4'
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                width='92'
-                height='32'
-                src='https://vercel.com/button'
-                alt='Deploy with Vercel'
-              />
-            </UnstyledLink>
-
-            <footer className='absolute bottom-2 text-gray-700'>
-              © {new Date().getFullYear()} By{' '}
-              <UnderlineLink href='https://theodorusclarence.com?ref=tsnextstarter'>
-                Theodorus Clarence
-              </UnderlineLink>
-            </footer>
-          </div>
-        </section>
-      </main>
-    </Layout>
+    <div className="flex flex-col items-center justify-center gap-y-3 py-8">
+      <div className="flex w-full flex-col items-center justify-center gap-y-2">
+        <input
+          disabled={fetchForCollection}
+          type="text"
+          placeholder="Add your wallet address"
+          onChange={(e) => setWalletAddress(e.target.value)}
+        ></input>
+        <input
+          disabled={!fetchForCollection}
+          onChange={(e) => setCollectionAddress(e.target.value)}
+          type="text"
+          placeholder="Add the collection address"
+        ></input>
+        <label className="text-gray-600">
+          <input
+            onChange={(e) => {
+              setFetchForCollection(e.target.checked);
+            }}
+            type="checkbox"
+            className="mr-2"
+          ></input>
+          Fetch for collection
+        </label>
+        <button
+          className="mt-3 w-1/5 rounded-sm bg-blue-400 px-4 py-2 text-white disabled:bg-slate-500"
+          onClick={() => {
+            if (fetchForCollection) {
+              fetchNFTsForCollection();
+            } else fetchNFTs();
+          }}
+        >
+          Let's go!
+        </button>
+      </div>
+      <div className="mt-4 flex w-5/6 flex-wrap justify-center gap-x-2 gap-y-12">
+        {NFTs.length &&
+          NFTs.map((nft, i) => {
+            return <NFTCard key={i} nft={nft}></NFTCard>;
+          })}
+      </div>
+    </div>
   );
-}
+};
+
+export default Home;
